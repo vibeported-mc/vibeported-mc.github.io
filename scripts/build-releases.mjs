@@ -66,6 +66,7 @@ if (!token) {
 const query = `query {
 ${MODS.map(
   (m, i) => `  r${i}: repository(owner: "${ORG}", name: "${m.repo}") {
+    licenseInfo { spdxId name url nickname }
     releases(first: 100, orderBy: { field: CREATED_AT, direction: DESC }) {
       nodes {
         tagName
@@ -109,11 +110,30 @@ function classify(assets) {
   };
 }
 
+// A fork inherits the upstream project's licence, so this is both what we redistribute and
+// what the original author chose. GitHub reports null when it cannot detect one.
+function readLicense(repoData, repo) {
+  const info = repoData?.licenseInfo;
+  if (!info || info.spdxId === "NOASSERTION") {
+    problems.push(`${repo}: no licence detected by GitHub`);
+    return null;
+  }
+  return {
+    spdxId: info.spdxId,
+    name: info.nickname || info.name,
+    url: info.url,
+  };
+}
+
 const releases = [];
 const problems = [];
+const licenses = {};
 
 MODS.forEach((mod, i) => {
-  const nodes = payload.data?.[`r${i}`]?.releases?.nodes ?? [];
+  const repoData = payload.data?.[`r${i}`];
+  licenses[mod.repo] = readLicense(repoData, mod.repo);
+
+  const nodes = repoData?.releases?.nodes ?? [];
   if (nodes.length === 0) {
     problems.push(`${mod.repo}: no releases returned`);
   }
@@ -138,6 +158,7 @@ MODS.forEach((mod, i) => {
       upstream: mod.upstream,
       description: mod.description,
       library: Boolean(mod.library),
+      license: licenses[mod.repo],
       tag: rel.tagName,
       title: rel.name || rel.tagName,
       modVersion,
@@ -167,6 +188,7 @@ const out = {
     upstream,
     description,
     library: Boolean(library),
+    license: licenses[repo],
   })),
   releases,
 };
