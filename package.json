@@ -1,0 +1,26 @@
+{
+  "name": "vibeported-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing page for the vibeported Minecraft mod ports",
+  "type": "module",
+  "scripts": {
+    "releases": "node scripts/build-releases.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vibeported-mc/vibeported-mc.github.io.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.5",
+    "vite": "^8.2.1"
+  }
+}

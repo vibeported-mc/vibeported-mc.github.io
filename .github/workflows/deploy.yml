@@ -1,0 +1,66 @@
+# Builds the site and deploys it to GitHub Pages.
+#
+# Manual trigger only, by request: releases are infrequent and a landing page does not need
+# to chase them automatically. Run it from the Actions tab, or with
+#   gh workflow run deploy.yml
+# after publishing a release in any of the mod repositories.
+#
+# Nothing is committed. releases.json is generated into public/ during the run, Vite bundles
+# it into dist/, and dist/ is handed to the Pages service as an artifact — so the repository
+# stays source-only and GITHUB_TOKEN never needs write access to contents.
+name: Deploy site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read   # checkout only; nothing is pushed back
+  pages: write     # hand the built artifact to the Pages service
+  id-token: write  # required for deploy-pages' OIDC handshake
+
+# Never let two deploys race; queue rather than cancel so a triggered deploy always lands.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Reads every release across the mod repositories via GraphQL and writes
+      # public/releases.json. Fails the run if it comes back with fewer releases than there
+      # are mods, so a degraded API response cannot quietly deploy a near-empty page.
+      - name: Generate release index
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run releases
+
+      - name: Build
+        run: npm run build
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
