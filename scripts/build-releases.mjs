@@ -48,6 +48,23 @@ const MODS = [
     description:
       "Multiblock forges for alloying metals, with datapack-driven recipes and EMI integration.",
   },
+  {
+    repo: "reinforced-core",
+    name: "Reinforced Core",
+    author: "Aton-Kish",
+    upstream: "https://github.com/Aton-Kish/reinforced-core",
+    description:
+      "Library mod backing the reinforced storage series. Required by Reinforced Chests.",
+    library: true,
+  },
+  {
+    repo: "reinforced-chests",
+    name: "Reinforced Chests",
+    author: "Aton-Kish",
+    upstream: "https://github.com/Aton-Kish/reinforced-chests",
+    description:
+      "Copper, iron, gold, diamond and netherite chests, each holding more than the last.",
+  },
 ];
 
 // <mod version>-<minecraft version>-<loader>[-build.<n>] — the scheme every release tag uses.
