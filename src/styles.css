@@ -571,6 +571,45 @@ a {
   margin-bottom: 3px;
 }
 
+.builds {
+  margin-top: 12px;
+  font-size: 0.85rem;
+}
+
+.builds summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.builds ul {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Name grows, date and link keep their width, so the download links line up down the
+   list however long the version strings are. */
+.builds li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.builds li:first-child {
+  border-top: 0;
+}
+
+.build-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.build-date {
+  white-space: nowrap;
+}
+
 /* ---------- Dev page ---------- */
 
 .prose {

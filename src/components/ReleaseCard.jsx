@@ -1,6 +1,11 @@
 import { formatDate, formatSize } from "../lib/releases.js";
 
-export default function ReleaseCard({ release }) {
+// A build with no -build.N suffix is the original cut of that mod version.
+function buildLabel(release) {
+  return release.build === null ? "no build suffix" : `build ${release.build}`;
+}
+
+export default function ReleaseCard({ release, older = [] }) {
   return (
     <article className="card">
       <div className="card-head">
@@ -67,6 +72,31 @@ export default function ReleaseCard({ release }) {
           </a>
         )}
       </div>
+
+      {older.length > 0 && (
+        <details className="builds">
+          <summary>
+            {older.length} earlier build{older.length === 1 ? "" : "s"}
+          </summary>
+          <ul>
+            {older.map((r) => (
+              <li key={r.tag}>
+                <span className="build-name">
+                  {r.modVersion} <span className="muted">{buildLabel(r)}</span>
+                </span>
+                <span className="build-date muted">{formatDate(r.publishedAt)}</span>
+                {r.download ? (
+                  <a href={r.download.url}>
+                    jar <span className="muted">{formatSize(r.download.size)}</span>
+                  </a>
+                ) : (
+                  <a href={r.releaseUrl}>assets</a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {release.extras.length > 0 && (
         <details className="extras">

@@ -2,13 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import FilterPanel from "../components/FilterPanel.jsx";
 import Pagination from "../components/Pagination.jsx";
 import ReleaseCard from "../components/ReleaseCard.jsx";
-import { compareVersionsDesc } from "../lib/releases.js";
+import { compareVersionsDesc, groupReleases } from "../lib/releases.js";
 
+// Comparators take groups and read the current build, so ordering follows what each card
+// actually shows rather than the superseded builds folded inside it.
 const SORTS = {
-  newest: { label: "Newest", cmp: (a, b) => new Date(b.publishedAt) - new Date(a.publishedAt) },
-  oldest: { label: "Oldest", cmp: (a, b) => new Date(a.publishedAt) - new Date(b.publishedAt) },
-  name: { label: "Name (A–Z)", cmp: (a, b) => a.mod.localeCompare(b.mod) },
-  mc: { label: "Minecraft version", cmp: (a, b) => compareVersionsDesc(a.mcVersion, b.mcVersion) },
+  newest: {
+    label: "Newest",
+    cmp: (a, b) => new Date(b.latest.publishedAt) - new Date(a.latest.publishedAt),
+  },
+  oldest: {
+    label: "Oldest",
+    cmp: (a, b) => new Date(a.latest.publishedAt) - new Date(b.latest.publishedAt),
+  },
+  name: { label: "Name (A–Z)", cmp: (a, b) => a.latest.mod.localeCompare(b.latest.mod) },
+  mc: {
+    label: "Minecraft version",
+    cmp: (a, b) => compareVersionsDesc(a.latest.mcVersion, b.latest.mcVersion),
+  },
 };
 
 const PAGE_SIZES = [20, 40, 60, 100];
@@ -25,14 +36,18 @@ function useToggleSet() {
   return [set, toggle, () => setSet(new Set())];
 }
 
-function countBy(releases, key) {
+// Counts what the filters will actually yield: one per card, not per underlying build.
+function countBy(groups, key) {
   const out = {};
-  for (const r of releases) out[r[key]] = (out[r[key]] ?? 0) + 1;
+  for (const g of groups) out[g.latest[key]] = (out[g.latest[key]] ?? 0) + 1;
   return out;
 }
 
 export default function ModsPage({ data }) {
   const releases = data.releases;
+  // Group key covers mcVersion and loader, so a group is uniform in both and the filters
+  // below can decide on the latest release alone.
+  const groups = useMemo(() => groupReleases(releases), [releases]);
 
   const [query, setQuery] = useState("");
   const [mcVersions, toggleMc, clearMc] = useToggleSet();
@@ -50,20 +65,20 @@ export default function ModsPage({ data }) {
     [releases],
   );
 
-  const mcCounts = useMemo(() => countBy(releases, "mcVersion"), [releases]);
-  const loaderCounts = useMemo(() => countBy(releases, "loader"), [releases]);
+  const mcCounts = useMemo(() => countBy(groups, "mcVersion"), [groups]);
+  const loaderCounts = useMemo(() => countBy(groups, "loader"), [groups]);
 
   const filtered = useMemo(() => {
     // Search matches the mod name only, as intended — not tags, authors or descriptions.
     const q = query.trim().toLowerCase();
-    const out = releases.filter((r) => {
+    const out = groups.filter(({ latest: r }) => {
       if (q && !r.mod.toLowerCase().includes(q)) return false;
       if (mcVersions.size && !mcVersions.has(r.mcVersion)) return false;
       if (loaders.size && !loaders.has(r.loader)) return false;
       return true;
     });
     return out.sort(SORTS[sort].cmp);
-  }, [releases, query, mcVersions, loaders, sort]);
+  }, [groups, query, mcVersions, loaders, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
 
@@ -154,7 +169,7 @@ export default function ModsPage({ data }) {
           </label>
 
           <span className="count">
-            {filtered.length} release{filtered.length === 1 ? "" : "s"}
+            {filtered.length} result{filtered.length === 1 ? "" : "s"}
           </span>
 
           <div className="toolbar-pager">
@@ -166,8 +181,8 @@ export default function ModsPage({ data }) {
           <p className="muted empty">Nothing matches those filters.</p>
         ) : (
           <div className="grid">
-            {pageItems.map((r) => (
-              <ReleaseCard key={`${r.repo}@${r.tag}`} release={r} />
+            {pageItems.map((g) => (
+              <ReleaseCard key={g.key} release={g.latest} older={g.older} />
             ))}
           </div>
         )}

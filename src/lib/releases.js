@@ -29,6 +29,37 @@ export function compareVersionsDesc(a, b) {
   return 0;
 }
 
+// Newest build first within one port: the mod version decides, then the numeric build
+// suffix. A tag with no suffix is the original release of that version, so any -build.N
+// reissue of it is newer; publish date breaks anything still tied.
+export function compareBuildsDesc(a, b) {
+  const byVersion = compareVersionsDesc(a.modVersion, b.modVersion);
+  if (byVersion !== 0) return byVersion;
+  const byBuild = (b.build ?? -1) - (a.build ?? -1);
+  if (byBuild !== 0) return byBuild;
+  return new Date(b.publishedAt) - new Date(a.publishedAt);
+}
+
+// Releases of one mod for the same Minecraft version and loader are rebuilds of a single
+// port, differing only in the -build.N suffix. Collapse them so the listing shows the
+// current build once and keeps superseded ones behind a disclosure, rather than giving
+// every rebuild a card of its own.
+export function groupReleases(releases) {
+  const groups = new Map();
+
+  for (const r of releases) {
+    const key = `${r.repo}@${r.mcVersion}@${r.loader}`;
+    const list = groups.get(key);
+    if (list) list.push(r);
+    else groups.set(key, [r]);
+  }
+
+  return [...groups].map(([key, list]) => {
+    const [latest, ...older] = [...list].sort(compareBuildsDesc);
+    return { key, latest, older };
+  });
+}
+
 // Filler releases for exercising pagination and the filter panels during development.
 // Only reachable from a dev server with ?fake=<n> in the URL, so a production build can
 // never show them even if the parameter is passed.
